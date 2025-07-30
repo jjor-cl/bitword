@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitword</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%); /* Degradado para tema cripto */
+            color: #f7fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+        }
+        .game-container, .previous-word-container {
+            background-color: #2d3748;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        .previous-word-container {
+            border: 1px solid #4a5568;
+        }
+        #language-selector-container {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            z-index: 10;
+        }
+        #language-selector {
+            background-color: #4a5568;
+            color: #f7fafc;
+            border: 1px solid #718096;
+            border-radius: 0.375rem;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        .word-display {
+            font-size: clamp(1.5rem, 5vw, 2.25rem);
+            letter-spacing: 0.2em;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            background-color: #4a5568;
+            border-radius: 0.5rem;
+            min-height: 3.5rem;
+            word-wrap: break-word;
+        }
+        .word-display span {
+            display: inline-block;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        .word-display span.reveal {
+            animation: flip 0.3s ease forwards;
+        }
+        @keyframes flip {
+            0% { transform: rotateX(90deg); opacity: 0; }
+            100% { transform: rotateX(0deg); opacity: 1; }
+        }
+        .alphabet-button {
+            background-color: #f2a900;
+            color: #1a202c;
+            font-weight: 600;
+            border: none;
+            padding: 0.5rem;
+            margin: 0.15rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+            width: 36px;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+        }
+        .alphabet-button:hover { background-color: #dd9800; }
+        .alphabet-button:active { transform: scale(0.95); }
+        .alphabet-button:disabled {
+            background-color: #718096;
+            color: #a0aec0;
+            cursor: not-allowed;
+        }
+        .alphabet-button.correct { background-color: #38a169; } /* Verde para letras correctas */
+        .alphabet-button.wrong { background-color: #e53e3e; } /* Rojo para letras incorrectas */
+        .status-message, .toast-message {
+            font-size: 1rem;
+            margin-top: 1rem;
+            min-height: 1.5em;
+        }
+        .reset-button, .hint-button {
+            color: white;
+            font-weight: 600;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            margin-top: 1rem;
+            border: none;
+            font-size: 0.9rem;
+        }
+        .reset-button { background-color: #48bb78; }
+        .reset-button:hover { background-color: #38a169; }
+        .hint-button { background-color: #3182ce; }
+        .hint-button:hover { background-color: #2b6cb0; }
+        .reset-button:disabled, .hint-button:disabled {
+            background-color: #718096;
+            cursor: not-allowed;
+        }
+        .share-icons-container {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .share-icon-button {
+            background-color: #4a5568;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .share-icon-button:hover { background-color: #718096; }
+        .share-icon-button svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+        .copy-general-share-button {
+            background-color: #3182ce;
+            color: white;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            margin-top: 0.5rem;
+            border: none;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .copy-general-share-button:hover { background-color: #2b6cb0; }
+        .copy-general-share-button svg {
+            width: 16px;
+            height: 16px;
+            margin-right: 0.5rem;
+            fill: currentColor;
+        }
+        .guesses-info, .daily-message {
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+        }
+        .guessed-letters-container {
+            margin-top: 0.75rem;
+            min-height: 1.5em;
+            font-size: 0.9rem;
+        }
+        .guessed-letters-label { font-weight: 600; }
+        .guessed-letter {
+            display: inline-block;
+            padding: 0.2rem 0.4rem;
+            margin: 0.15rem;
+            background-color: #718096;
+            border-radius: 0.25rem;
+            text-decoration: line-through;
+        }
+        .bitcoin-icon {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 0.75rem;
+            display: inline-block;
+            animation: glow 2s ease-in-out infinite;
+        }
+        @keyframes glow {
+            0%, 100% { filter: brightness(100%); }
+            50% { filter: brightness(120%); }
+        }
+        .previous-word-container h2 {
+            font-size: 1.25rem;
+            color: #f2a900;
+            margin-bottom: 0.5rem;
+        }
+        .previous-word-container p, .win-explanation-container p {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+            text-align: left;
+        }
+        .explanation-text {
+            font-style: italic;
+            color: #a0aec0;
+            text-align: left;
+            margin-top: 0.25rem;
+        }
+        .stats-display {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background-color: #4a5568;
+            border-radius: 0.5rem;
+        }
+        .stats-display p {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+            text-align: center;
+        }
+        .stats-display textarea { display: none; }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #38a169;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+        .win-explanation-container {
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            background-color: #2d3748;
+            border: 1px solid #4a5568;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="previous-word-display" class="previous-word-container hidden">
+        <h2 data-lang-key="yesterdayTerm"></h2>
+        <p><strong data-lang-key="wordLabel"></strong> <span id="prev-word"></span></p>
+        <p><strong data-lang-key="explanationLabel"></strong></p>
+        <p id="prev-explanation" class="explanation-text"></p>
+    </div>
+
+    <div class="game-container">
+        <div id="language-selector-container">
+            <select id="language-selector">
+                <option value="es">Español</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+        <svg class="bitcoin-icon" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+            <path d="M22.18,17.91a5.31,5.31,0,0,0,1.29-3.65,5.55,5.55,0,0,0-5.6-5.24H16.6V6.52h1.63V4H14.77V6.52H13.42V4H10V6.52H8.83v2.5h1.2V23.15H8.83v2.5H10V28h3.42V25.65h1.35V28h3.46V25.65h1.23a5.36,5.36,0,0,0,3.89-1.54,5.46,5.46,0,0,0,1.63-4A5.73,5.73,0,0,0,22.18,17.91Zm-8.76,5.72V19.88h2.4A2.8,2.8,0,0,1,18.6,22a2.64,2.64,0,0,1-2.78,2.53H13.42Zm0-6.25V11.53h2.07A2.23,2.23,0,0,1,18,13.69a2.15,2.15,0,0,1-2.33,2.19Z"/>
+        </svg>
+
+        <h1 id="main-title" class="text-2xl sm:text-3xl font-bold mb-4 text-yellow-400" data-lang-key="title">Bitword</h1>
+
+        <div id="daily-message" class="daily-message"></div>
+        <div class="guesses-info">
+            <span data-lang-key="guessesRemainingLabel"></span>: <span id="guesses-remaining" class="font-semibold"></span>
+        </div>
+
+        <div id="word-display" class="word-display"></div>
+
+        <div id="alphabet-buttons" class="mt-4 mb-3"></div>
+
+        <div class="guessed-letters-container">
+            <span class="guessed-letters-label" data-lang-key="wrongLettersLabel"></span>:
+            <span id="wrong-letters"></span>
+        </div>
+
+        <div id="status-message" class="status-message"></div>
+        
+        <div id="win-explanation-container" class="win-explanation-container hidden">
+            <p><strong data-lang-key="explanationLabel"></strong></p>
+            <p id="win-explanation" class="explanation-text"></p>
+        </div>
+
+        <div id="stats-display" class="stats-display hidden">
+            <p><span data-lang-key="yourTimeLabel"></span>: <span id="time-taken" class="font-semibold"></span> <span data-lang-key="secondsLabel"></span></p>
+            <p><span data-lang-key="averageTimeLabel"></span>: <span id="average-time" class="font-semibold"></span> <span data-lang-key="secondsLabel"></span></p>
+            <textarea id="share-message-storage" rows="3" readonly></textarea>
+            <div class="share-icons-container">
+                <button id="share-whatsapp" class="share-icon-button" aria-label="Compartir en WhatsApp">
+                    <svg viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.31 20.62C8.75 21.39 10.36 21.82 12.04 21.82C17.5 21.82 21.95 17.37 21.95 11.91C21.95 6.45 17.5 2 12.04 2ZM12.04 20.13C10.56 20.13 9.12 19.74 7.89 19L7.53 18.78L4.39 19.65L5.29 16.63L5.04 16.27C4.18 14.93 3.82 13.38 3.82 11.91C3.82 7.36 7.52 3.67 12.04 3.67C16.56 3.67 20.26 7.36 20.26 11.91C20.26 16.47 16.56 20.13 12.04 20.13ZM17.41 14.49C17.15 14.36 16.03 13.81 15.79 13.72C15.55 13.63 15.39 13.58 15.22 13.84C15.06 14.1 14.54 14.69 14.38 14.86C14.22 15.03 14.06 15.04 13.81 14.91C13.55 14.78 12.78 14.51 11.86 13.69C11.13 13.05 10.64 12.24 10.48 11.98C10.32 11.72 10.44 11.59 10.56 11.47C10.67 11.35 10.81 11.18 10.94 11.03C11.07 10.88 11.12 10.76 11.22 10.56C11.32 10.36 11.27 10.19 11.20 10.06C11.13 9.93 10.61 8.64 10.41 8.16C10.21 7.68 10.02 7.76 9.88 7.75C9.75 7.75 9.58 7.74 9.42 7.74C9.26 7.74 9.01 7.8 8.79 8.06C8.57 8.32 8.06 8.79 8.06 9.94C8.06 11.1 9.45 12.45 9.58 12.58C9.71 12.72 10.61 14.09 11.96 14.65C12.54 14.89 12.96 15.01 13.29 15.09C13.78 15.2 14.27 15.15 14.63 14.98C15.03 14.78 15.79 14.19 16.01 13.84C16.22 13.49 16.22 13.21 16.15 13.08C16.08 12.95 15.92 12.89 15.67 12.76C15.41 12.63 14.29 12.08 14.05 11.99C13.81 11.90 13.65 11.85 13.48 12.11C13.32 12.37 12.80 12.96 12.64 13.13C12.48 13.30 12.32 13.31 12.07 13.18C11.81 13.05 11.04 12.78 10.12 11.96C9.39 11.32 8.90 10.51 8.74 10.25C8.58 9.99 8.70 9.86 8.82 9.74C8.93 9.62 9.07 9.45 9.20 9.30C9.33 9.15 9.38 9.03 9.48 8.83C9.58 8.63 9.53 8.46 9.46 8.33C9.39 8.20 8.87 6.91 8.67 6.43C8.47 5.95 8.28 6.03 8.14 6.02C8.01 6.02 7.84 6.01 7.68 6.01C7.52 6.01 7.27 6.07 7.05 6.33C6.83 6.59 6.32 7.06 6.32 8.21C6.32 9.36 7.71 10.72 7.84 10.85C7.97 10.99 8.87 12.36 10.22 12.92C10.80 13.16 11.22 13.28 11.55 13.36C12.04 13.47 12.53 13.42 12.89 13.25C13.29 13.05 14.05 12.46 14.27 12.11C14.48 11.76 14.48 11.48 14.41 11.35C14.34 11.22 14.18 11.16 13.93 11.03L17.41 14.49Z"/></svg>
+                </button>
+                <button id="share-twitter" class="share-icon-button" aria-label="Compartir en X">
+                    <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </button>
+            </div>
+            <button id="copy-general-share-button" class="copy-general-share-button">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="mr-2 h-5 w-5"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                <span data-lang-key="copyShareMessageButton"></span>
+            </button>
+        </div>
+
+        <button id="hint-button" class="hint-button" data-lang-key="hintButton">Obtener Pista</button>
+        <button id="reset-button" class="reset-button" data-lang-key="playTomorrowButton"></button>
+    </div>
+
+    <div id="toast-notification" class="toast"></div>
+
+    <script>
+        // --- Game Configuration ---
+        const MAX_WRONG_GUESSES = 3;
+        const GAME_TEXT = {
+            es: {
+                title: "Bitword",
+                yesterdayTerm: "Término Bitcoin de Ayer",
+                wordLabel: "Palabra:",
+                explanationLabel: "Explicación:",
+                guessesRemainingLabel: "Intentos Restantes",
+                wrongLettersLabel: "Letras Incorrectas",
+                yourTimeLabel: "Tu tiempo",
+                averageTimeLabel: "Tu tiempo promedio",
+                secondsLabel: "segundos",
+                copyShareMessageButton: "Copiar Mensaje",
+                playTomorrowButton: "Jugar Mañana",
+                hintButton: "Obtener Pista",
+                hintUsed: "Pista usada: ¡Letra revelada!",
+                noHintsAvailable: "No hay más pistas disponibles.",
+                guessLetterPrompt: "¡Adivina una letra para empezar!",
+                alreadyPlayedTodayWon: (word) => `🎉 ¡Ya adivinaste la palabra de hoy: "${word}"! 🎉`,
+                alreadyPlayedTodayLost: "Jugaste hoy pero no adivinaste la palabra. ¡Vuelve mañana para ver la palabra y la explicación!",
+                alreadyPlayedTodayFallback: (word) => `Ya comenzaste el juego de hoy. La palabra era "${word}". ¡Vuelve mañana!`,
+                newDayMessage: "¡Nuevo día, nuevo puzzle de palabras Bitcoin!",
+                goodGuess: "¡Buena adivinanza!",
+                wrongGuess: (letter) => `¡Ups! "${letter}" no está en la palabra.`,
+                winMessage: (word) => `🎉 ¡Lo lograste! La palabra era "${word}"! 🎉`,
+                loseMessage: "¡Transacción fallida! Mejor suerte la próxima. La palabra se revelará mañana.",
+                wordHiddenTillTomorrow: "La palabra permanecerá oculta hasta mañana.",
+                shareMessage: (time, avgTime, emojiResult) => `${emojiResult}\n¡Gané el desafío #Bitword de hoy en ${time}s! Mi promedio: ${avgTime}s. ¿Puedes superar mi tiempo? Juega en bitword.fun`,
+                textCopied: "Texto copiado al portapapeles!",
+                failedToCopy: "Falló la copia. Por favor, copia manualmente.",
+                comeBackTomorrow: "¡Vuelve mañana por una nueva palabra!",
+                shareWhatsappAria: "Compartir en WhatsApp",
+                shareTwitterAria: "Compartir en X",
+                words: [
+                    { word: "SATOSHI", explanation: "La persona o grupo pseudónimo que desarrolló Bitcoin." },
+                    { word: "MINING", explanation: "El proceso de validar transacciones de Bitcoin y agregarlas a la blockchain, generalmente recompensado con nuevos bitcoins." },
+                    { word: "WALLET", explanation: "Una herramienta digital para almacenar, enviar y recibir Bitcoin, que contiene tus claves privadas." },
+                    { word: "HALVING", explanation: "Un evento que ocurre aproximadamente cada cuatro años, reduciendo a la mitad la recompensa por minar nuevos bloques de Bitcoin." },
+                    { word: "CRYPTO", explanation: "Abreviatura de criptomoneda; una moneda digital o virtual asegurada por criptografía." },
+                    { word: "LEDGER", explanation: "Un libro de registro; en Bitcoin, la blockchain actúa como un libro de contabilidad público y distribuido." },
+                    { word: "NODE", explanation: "Una computadora conectada a la red Bitcoin que valida y retransmite transacciones." },
+                    { word: "HASH", explanation: "Una función criptográfica que convierte datos de entrada en una cadena de caracteres de tamaño fijo, utilizada ampliamente en Bitcoin." },
+                    { word: "BITCOIN", explanation: "La primera criptomoneda descentralizada, creada por Satoshi Nakamoto." },
+                    { word: "FORK", explanation: "Un cambio en el protocolo de Bitcoin, que puede llevar a una nueva versión de la blockchain (bifurcación suave o dura)." }
+                ]
+            },
+            en: {
+                title: "Bitword",
+                yesterdayTerm: "Yesterday's Bitcoin Term",
+                wordLabel: "Word:",
+                explanationLabel: "Explanation:",
+                guessesRemainingLabel: "Guesses Remaining",
+                wrongLettersLabel: "Wrong Letters",
+                yourTimeLabel: "Your time",
+                averageTimeLabel: "Your average time",
+                secondsLabel: "seconds",
+                copyShareMessageButton: "Copy Message",
+                playTomorrowButton: "Play Tomorrow",
+                hintButton: "Get Hint",
+                hintUsed: "Hint used: Letter revealed!",
+                noHintsAvailable: "No more hints available.",
+                guessLetterPrompt: "Guess a letter to start!",
+                alreadyPlayedTodayWon: (word) => `🎉 You already guessed today's word: "${word}"! 🎉`,
+                alreadyPlayedTodayLost: "You played today but didn't guess the word. Come back tomorrow to see the word and explanation!",
+                alreadyPlayedTodayFallback: (word) => `You've already started today's game. The word was "${word}". Come back tomorrow!`,
+                newDayMessage: "New day, new Bitcoin word puzzle!",
+                goodGuess: "Good guess!",
+                wrongGuess: (letter) => `Oops! "${letter}" is not in the word.`,
+                winMessage: (word) => `🎉 You got it! The word was "${word}"! 🎉`,
+                loseMessage: "Transaction failed! Better luck next time. The word will be revealed tomorrow.",
+                wordHiddenTillTomorrow: "The word will remain hidden until tomorrow.",
+                shareMessage: (time, avgTime, emojiResult) => `${emojiResult}\nI aced today's #Bitword challenge in ${time}s! My average: ${avgTime}s. Can you beat my time? Play at bitword.fun`,
+                textCopied: "Text copied to clipboard!",
+                failedToCopy: "Failed to copy. Please copy manually.",
+                comeBackTomorrow: "Come back tomorrow for a new word!",
+                shareWhatsappAria: "Share on WhatsApp",
+                shareTwitterAria: "Share on X",
+                words: [
+                    { word: "SATOSHI", explanation: "The pseudonymous person or group who developed Bitcoin." },
+                    { word: "MINING", explanation: "The process of validating Bitcoin transactions and adding them to the blockchain, typically rewarded with new bitcoins." },
+                    { word: "WALLET", explanation: "A digital tool to store, send, and receive Bitcoin, holding your private keys." },
+                    { word: "HALVING", explanation: "An event that occurs approximately every four years, reducing the reward for mining new Bitcoin blocks by half." },
+                    { word: "CRYPTO", explanation: "Short for cryptocurrency; a digital or virtual currency secured by cryptography." },
+                    { word: "LEDGER", explanation: "A record-keeping book; in Bitcoin, the blockchain acts as a public, distributed ledger." },
+                    { word: "NODE", explanation: "A computer connected to the Bitcoin network that validates and relays transactions." },
+                    { word: "HASH", explanation: "A cryptographic function that converts input data into a fixed-size string of characters, used extensively in Bitcoin." },
+                    { word: "BITCOIN", explanation: "The first decentralized cryptocurrency, created by Satoshi Nakamoto." },
+                    { word: "FORK", explanation: "A change in the Bitcoin protocol, which can lead to a new version of the blockchain (soft fork or hard fork)." }
+                ]
+            }
+        };
+
+        // --- DOM Elements ---
+        const languageSelectorEl = document.getElementById('language-selector');
+        const wordDisplayEl = document.getElementById('word-display');
+        const guessesRemainingEl = document.getElementById('guesses-remaining');
+        const alphabetButtonsEl = document.getElementById('alphabet-buttons');
+        const statusMessageEl = document.getElementById('status-message');
+        const resetButtonEl = document.getElementById('reset-button');
+        const hintButtonEl = document.getElementById('hint-button');
+        const wrongLettersEl = document.getElementById('wrong-letters');
+        const previousWordDisplayEl = document.getElementById('previous-word-display');
+        const prevWordEl = document.getElementById('prev-word');
+        const prevExplanationEl = document.getElementById('prev-explanation');
+        const dailyMessageEl = document.getElementById('daily-message');
+        const statsDisplayEl = document.getElementById('stats-display');
+        const timeTakenEl = document.getElementById('time-taken');
+        const averageTimeEl = document.getElementById('average-time');
+        const shareMessageStorageEl = document.getElementById('share-message-storage');
+        const toastNotificationEl = document.getElementById('toast-notification');
+        const shareWhatsappBtn = document.getElementById('share-whatsapp');
+        const shareTwitterBtn = document.getElementById('share-twitter');
+        const copyGeneralShareButtonEl = document.getElementById('copy-general-share-button');
+        const winExplanationContainerEl = document.getElementById('win-explanation-container');
+        const winExplanationEl = document.getElementById('win-explanation');
+
+        // --- Game State ---
+        let currentLang = localStorage.getItem('bitcoinWordGame_lang') || 'es';
+        let currentWordData = {};
+        let guessedLetters = [];
+        let wrongGuesses = 0;
+        let displayedWord = [];
+        let gameActive = true;
+        let startTime = 0;
+
+        // --- Helper Functions ---
+        function getFormattedDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function getDaysSinceEpoch(date) {
+            const epoch = new Date(2024, 0, 1);
+            const msPerDay = 1000 * 60 * 60 * 24;
+            return Math.floor((date.getTime() - epoch.getTime()) / msPerDay);
+        }
+
+        function getWordForDate(date, lang) {
+            const dayIndex = getDaysSinceEpoch(date);
+            return GAME_TEXT[lang].words[dayIndex % GAME_TEXT[lang].words.length];
+        }
+
+        function updateUIText() {
+            const langTexts = GAME_TEXT[currentLang];
+            document.title = langTexts.title;
+            document.documentElement.lang = currentLang;
+
+            document.querySelectorAll('[data-lang-key]').forEach(el => {
+                const key = el.getAttribute('data-lang-key');
+                if (langTexts[key]) {
+                    el.textContent = langTexts[key];
+                }
+            });
+            shareWhatsappBtn.setAttribute('aria-label', langTexts.shareWhatsappAria);
+            shareTwitterBtn.setAttribute('aria-label', langTexts.shareTwitterAria);
+        }
+
+        function showToast(messageKey, duration = 3000) {
+            toastNotificationEl.textContent = GAME_TEXT[currentLang][messageKey] || messageKey;
+            toastNotificationEl.classList.add('show');
+            setTimeout(() => {
+                toastNotificationEl.classList.remove('show');
+            }, duration);
+        }
+
+        function copyToClipboard(text, successMessageKey = 'textCopied') {
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = text;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            tempTextArea.setSelectionRange(0, 99999);
+            try {
+                document.execCommand('copy');
+                showToast(successMessageKey);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                showToast('failedToCopy');
+            }
+            document.body.removeChild(tempTextArea);
+        }
+
+        // --- Game Logic ---
+        function initGame() {
+            languageSelectorEl.value = currentLang;
+            updateUIText();
+
+            const today = new Date();
+            const todayStr = getFormattedDate(today);
+
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+            const yesterdayStr = getFormattedDate(yesterday);
+            const previousWordHistoryKey = `bitcoinWordHistory_${yesterdayStr}`;
+            try {
+                const storedPrevWordData = JSON.parse(localStorage.getItem(previousWordHistoryKey));
+                const prevWordLang = storedPrevWordData?.lang || currentLang;
+
+                if (storedPrevWordData && storedPrevWordData.word) {
+                    const prevWordObj = GAME_TEXT[prevWordLang].words.find(w => w.word.toUpperCase() === storedPrevWordData.word.toUpperCase());
+                    if (prevWordObj) {
+                        prevWordEl.textContent = prevWordObj.word;
+                        prevExplanationEl.textContent = prevWordObj.explanation;
+                        previousWordDisplayEl.classList.remove('hidden');
+                    } else {
+                        previousWordDisplayEl.classList.add('hidden');
+                    }
+                } else {
+                    previousWordDisplayEl.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error("Error reading previous word data:", e);
+                previousWordDisplayEl.classList.add('hidden');
+            }
+
+            currentWordData = getWordForDate(today, currentLang);
+            guessedLetters = [];
+            wrongGuesses = 0;
+            displayedWord = currentWordData.word ? currentWordData.word.split('').map(char => (char === ' ' ? ' ' : '_')) : [];
+
+            updateWordDisplay();
+            updateGuessesRemaining();
+            renderAlphabetButtons();
+            statusMessageEl.textContent = GAME_TEXT[currentLang].guessLetterPrompt;
+            statusMessageEl.style.color = '#f7fafc';
+            wrongLettersEl.textContent = '';
+            resetButtonEl.disabled = true;
+            hintButtonEl.disabled = false;
+            statsDisplayEl.classList.add('hidden');
+            winExplanationContainerEl.classList.add('hidden');
+
+            const lastPlayDate = localStorage.getItem('bitcoinWordGame_lastPlayDate');
+            const gameStatusToday = localStorage.getItem(`bitcoinWordGame_status_${todayStr}`);
+
+            if (lastPlayDate === todayStr) {
+                gameActive = false;
+                disableAllAlphabetButtons();
+                resetButtonEl.disabled = false;
+                hintButtonEl.disabled = true;
+
+                if (gameStatusToday === 'won') {
+                    revealWord();
+                    statusMessageEl.innerHTML = GAME_TEXT[currentLang].alreadyPlayedTodayWon(currentWordData.word);
+                    statusMessageEl.style.color = '#f2a900';
+
+                    winExplanationEl.textContent = currentWordData.explanation;
+                    winExplanationContainerEl.classList.remove('hidden');
+
+                    const savedStartTime = parseFloat(localStorage.getItem(`bitcoinWordGame_startTime_${todayStr}`));
+                    const savedEndTime = parseFloat(localStorage.getItem(`bitcoinWordGame_endTime_${todayStr}`));
+                    if (savedStartTime && savedEndTime) {
+                        const timeTaken = ((savedEndTime - savedStartTime) / 1000).toFixed(2);
+                        let gameStats = JSON.parse(localStorage.getItem('bitcoinWordGame_stats_v3')) || { totalWordsGuessed: 0, totalTimeSpent: 0 };
+                        const averageTime = gameStats.totalWordsGuessed > 0 ? (gameStats.totalTimeSpent / gameStats.totalWordsGuessed).toFixed(2) : "N/A";
+
+                        timeTakenEl.textContent = timeTaken;
+                        averageTimeEl.textContent = averageTime;
+                        shareMessageStorageEl.value = GAME_TEXT[currentLang].shareMessage(timeTaken, averageTime, generateEmojiResult());
+                        statsDisplayEl.classList.remove('hidden');
+                    }
+                } else if (gameStatusToday === 'lost') {
+                    dailyMessageEl.textContent = GAME_TEXT[currentLang].alreadyPlayedTodayLost;
+                    dailyMessageEl.style.color = '#fc8181';
+                    statusMessageEl.textContent = GAME_TEXT[currentLang].wordHiddenTillTomorrow;
+                } else {
+                    dailyMessageEl.innerHTML = GAME_TEXT[currentLang].alreadyPlayedTodayFallback(currentWordData.word);
+                    revealWord();
+                    dailyMessageEl.style.color = '#f2a900';
+                }
+            } else {
+                gameActive = true;
+                startTime = Date.now();
+                localStorage.setItem(`bitcoinWordGame_startTime_${todayStr}`, startTime.toString());
+                localStorage.removeItem(`bitcoinWordGame_endTime_${todayStr}`);
+                localStorage.removeItem(`bitcoinWordGame_status_${todayStr}`);
+                dailyMessageEl.textContent = GAME_TEXT[currentLang].newDayMessage;
+                dailyMessageEl.style.color = '#68d391';
+            }
+        }
+
+        function renderAlphabetButtons() {
+            alphabetButtonsEl.innerHTML = '';
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            for (const letter of alphabet) {
+                const button = document.createElement('button');
+                button.textContent = letter;
+                button.classList.add('alphabet-button');
+                button.addEventListener('click', () => handleGuess(letter));
+                alphabetButtonsEl.appendChild(button);
+            }
+        }
+
+        function updateWordDisplay() {
+            // Guardar estado actual para comparar cambios
+            const previousWord = displayedWord.slice();
+            wordDisplayEl.innerHTML = displayedWord.map((char, index) => {
+                const wasUnderscore = previousWord[index] === '_';
+                const isRevealed = char !== '_' && wasUnderscore;
+                return `<span class="${isRevealed ? 'reveal' : ''}">${char}</span>`;
+            }).join('');
+        }
+
+        function updateGuessesRemaining() {
+            guessesRemainingEl.textContent = MAX_WRONG_GUESSES - wrongGuesses;
+            hintButtonEl.disabled = wrongGuesses >= MAX_WRONG_GUESSES || !gameActive || !getAvailableHint();
+        }
+
+        function handleGuess(letter) {
+            if (!gameActive || guessedLetters.includes(letter)) return;
+
+            guessedLetters.push(letter);
+            disableButton(letter);
+
+            if (currentWordData.word.includes(letter)) {
+                for (let i = 0; i < currentWordData.word.length; i++) {
+                    if (currentWordData.word[i] === letter) displayedWord[i] = letter;
+                }
+                statusMessageEl.textContent = GAME_TEXT[currentLang].goodGuess;
+                statusMessageEl.style.color = '#68d391';
+            } else {
+                wrongGuesses++;
+                addWrongLetter(letter);
+                statusMessageEl.textContent = GAME_TEXT[currentLang].wrongGuess(letter);
+                statusMessageEl.style.color = '#fc8181';
+            }
+            updateWordDisplay();
+            updateGuessesRemaining();
+            checkGameStatus();
+        }
+
+        function disableButton(letter) {
+            const buttons = alphabetButtonsEl.getElementsByTagName('button');
+            for (const button of buttons) {
+                if (button.textContent === letter) {
+                    button.disabled = true;
+                    button.classList.add(currentWordData.word.includes(letter) ? 'correct' : 'wrong');
+                    break;
+                }
+            }
+        }
+
+        function disableAllAlphabetButtons() {
+            const buttons = alphabetButtonsEl.getElementsByTagName('button');
+            for (const button of buttons) button.disabled = true;
+        }
+
+        function addWrongLetter(letter) {
+            const span = document.createElement('span');
+            span.textContent = letter;
+            span.classList.add('guessed-letter');
+            wrongLettersEl.appendChild(span);
+        }
+
+        function revealWord() {
+            displayedWord = currentWordData.word.split('');
+            updateWordDisplay();
+        }
+
+        function getAvailableHint() {
+            const unguessedLetters = currentWordData.word.split('').filter(l => !guessedLetters.includes(l) && l !== ' ');
+            return unguessedLetters.length > 0 ? unguessedLetters[Math.floor(Math.random() * unguessedLetters.length)] : null;
+        }
+
+        function handleHint() {
+            if (!gameActive || wrongGuesses >= MAX_WRONG_GUESSES) return;
+            const hintLetter = getAvailableHint();
+            if (hintLetter) {
+                handleGuess(hintLetter);
+                wrongGuesses++; // Penalización por pista
+                updateGuessesRemaining();
+                showToast('hintUsed');
+            } else {
+                showToast('noHintsAvailable');
+            }
+        }
+
+        function generateEmojiResult() {
+            return guessedLetters.map(letter => currentWordData.word.includes(letter) ? '🟧' : '⬛').join('');
+        }
+
+        function checkGameStatus() {
+            let won = false;
+            const todayStr = getFormattedDate(new Date());
+
+            if (displayedWord.join('') === currentWordData.word) {
+                won = true;
+                gameActive = false;
+                const endTime = Date.now();
+                localStorage.setItem(`bitcoinWordGame_endTime_${todayStr}`, endTime.toString());
+                const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
+
+                statusMessageEl.textContent = GAME_TEXT[currentLang].winMessage(currentWordData.word);
+                statusMessageEl.style.color = '#f2a900';
+
+                winExplanationEl.textContent = currentWordData.explanation;
+                winExplanationContainerEl.classList.remove('hidden');
+
+                let gameStats = JSON.parse(localStorage.getItem('bitcoinWordGame_stats_v3')) || { totalWordsGuessed: 0, totalTimeSpent: 0 };
+                gameStats.totalWordsGuessed++;
+                gameStats.totalTimeSpent += parseFloat(timeTaken);
+                localStorage.setItem('bitcoinWordGame_stats_v3', JSON.stringify(gameStats));
+                const averageTime = (gameStats.totalTimeSpent / gameStats.totalWordsGuessed).toFixed(2);
+
+                timeTakenEl.textContent = timeTaken;
+                averageTimeEl.textContent = averageTime;
+                shareMessageStorageEl.value = GAME_TEXT[currentLang].shareMessage(timeTaken, averageTime, generateEmojiResult());
+                statsDisplayEl.classList.remove('hidden');
+
+            } else if (wrongGuesses >= MAX_WRONG_GUESSES) {
+                gameActive = false;
+                statusMessageEl.textContent = GAME_TEXT[currentLang].loseMessage;
+                statusMessageEl.style.color = '#e53e3e';
+                statsDisplayEl.classList.add('hidden');
+                winExplanationContainerEl.classList.add('hidden');
+            }
+
+            if (!gameActive) {
+                disableAllAlphabetButtons();
+                resetButtonEl.disabled = false;
+                hintButtonEl.disabled = true;
+                resetButtonEl.style.backgroundColor = won ? '#f2a900' : '#e53e3e';
+
+                localStorage.setItem('bitcoinWordGame_lastPlayDate', todayStr);
+                localStorage.setItem(`bitcoinWordGame_status_${todayStr}`, won ? 'won' : 'lost');
+
+                const wordHistoryKey = `bitcoinWordHistory_${todayStr}`;
+                try {
+                    localStorage.setItem(wordHistoryKey, JSON.stringify({
+                        word: currentWordData.word,
+                        explanation: currentWordData.explanation,
+                        lang: currentLang
+                    }));
+                } catch (e) {
+                    console.error("Error saving word data to localStorage", e);
+                }
+            }
+        }
+
+        // --- Event Listeners ---
+        languageSelectorEl.addEventListener('change', (event) => {
+            currentLang = event.target.value;
+            localStorage.setItem('bitcoinWordGame_lang', currentLang);
+            initGame();
+        });
+
+        resetButtonEl.addEventListener('click', () => {
+            dailyMessageEl.textContent = GAME_TEXT[currentLang].comeBackTomorrow;
+            resetButtonEl.disabled = true;
+        });
+
+        hintButtonEl.addEventListener('click', handleHint);
+
+        shareWhatsappBtn.addEventListener('click', () => {
+            const text = encodeURIComponent(shareMessageStorageEl.value);
+            window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+        });
+
+        shareTwitterBtn.addEventListener('click', () => {
+            const text = encodeURIComponent(shareMessageStorageEl.value);
+            window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
+        });
+
+        copyGeneralShareButtonEl.addEventListener('click', () => {
+            copyToClipboard(shareMessageStorageEl.value, 'textCopied');
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (gameActive) {
+                const letter = event.key.toUpperCase();
+                if (/^[A-Z]$/.test(letter)) {
+                    handleGuess(letter);
+                }
+            }
+        });
+
+        // --- Initial Game Setup ---
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>
